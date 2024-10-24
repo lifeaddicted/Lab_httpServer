@@ -6,16 +6,17 @@
 class HttpConn
 {
     public:
-        HttpConn();
-        ~HttpConn();
+        HttpConn(int sock, const sockaddr_in& addr);
+
+        void Close();
 
     public:
         static int m_clientCnt;
-        const static int m_maxClientCnt;
+        const static int m_maxClientCnt = 10000;
     
     private:
         int m_sockfd{-1};
-        sockaddr_in clientAddr{0};
+        sockaddr_in m_addr{0};
 };
 
 #endif

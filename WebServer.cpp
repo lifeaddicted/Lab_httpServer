@@ -1,8 +1,9 @@
 #include "WebServer.h"
-#include "http_conn.h"
 #include <assert.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <iostream>
+#include <unistd.h>
 
 void WebServer::eventListen()
 {
@@ -42,8 +43,33 @@ void WebServer::eventLoop()
                 int clientfd = accept(m_listenfd, (sockaddr*)&clientaddr, &len);
                 if(clientfd == -1)
                     continue;
-                //连接对象
+                newConnetion(clientfd, clientaddr);
+                continue;
+            }
+            if(m_events[i].events & EPOLLIN)
+            {
+                char buf[1024];
+                int recvbytes = recv(m_events[i].data.fd, buf, 1023, 0);
+                if(recvbytes == 0)
+                {
+                    std::cout << "conn closed by peer" << std::endl;
+                    m_mapConn.erase(m_events[i].data.fd);
+                    close(m_events[i].data.fd);
+                }
             }
         }
     }
+}
+
+void WebServer::newConnetion(int sock, const sockaddr_in& addr)
+{
+    std::cout << "new connection" << std::endl;
+    HttpConn conn(sock, addr);
+    m_mapConn.insert({sock, conn});
+
+    epoll_event event;
+    event.data.fd = sock;
+    event.events = EPOLLIN | EPOLLOUT;
+    int ret = epoll_ctl(m_epollfd, EPOLL_CTL_ADD, sock, &event);
+    std::cout << "add ret: " << ret << std::endl;
 }
