@@ -10,7 +10,8 @@ int HttpConn::handleInput()
     if(bytes == -1)
         return -1;
     
+    std::cout << "recv " << bytes << " bytes: " << m_inBuf + m_inOff;
     m_inOff += bytes;
     m_inBuf[m_inOff] = 0;
-    std::cout << "recv " << bytes << " bytes: " << m_inBuf;
+    return bytes;
 }
