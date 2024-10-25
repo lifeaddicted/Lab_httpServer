@@ -6,19 +6,22 @@
 #include <map>
 #include <sys/socket.h>
 #include "http_conn.h"
+#include "Sock.h"
 
 class WebServer{
     public:
+        WebServer(): m_listenSock() {}
+
         void eventListen();
         void eventLoop();
 
-        inline void newConnetion(int sock, const sockaddr_in& addr);
+        inline void newConnetion(int sock);
 
     public:
         const static int MAX_EVENT_NUM = 10000;
         
     private:
-        int m_listenfd{-1};
+        Sock m_listenSock;
         int m_epollfd{-1};
         epoll_event m_events[MAX_EVENT_NUM];
 

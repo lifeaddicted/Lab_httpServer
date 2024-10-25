@@ -1,15 +1,16 @@
 #include "http_conn.h"
 #include <unistd.h>
+#include <iostream>
 
 int HttpConn::m_clientCnt = 0;
 
-HttpConn::HttpConn(int sock, const sockaddr_in& addr)
-: m_sockfd(sock), m_addr(addr)
-{}
-
-void HttpConn::Close()
+int HttpConn::handleInput()
 {
-    if(m_sockfd != -1)
-        close(m_sockfd);
+    int bytes = m_sock.Recv(m_inBuf + m_inOff, BUF_SIZE - m_inOff - 1);
+    if(bytes == -1)
+        return -1;
+    
+    m_inOff += bytes;
+    m_inBuf[m_inOff] = 0;
+    std::cout << "recv " << bytes << " bytes: " << m_inBuf;
 }
-

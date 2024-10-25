@@ -7,24 +7,20 @@
 
 void WebServer::eventListen()
 {
-    m_listenfd = socket(AF_INET, SOCK_STREAM, 0);
-    assert(m_listenfd != -1);
-    
-    sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(8080);
-    addr.sin_addr.s_addr = INADDR_ANY;
-    bind(m_listenfd, (sockaddr*)&addr, sizeof(addr));
+    if(!m_listenSock.Bind(8080))
+        throw "bind failed!";
 
-    listen(m_listenfd, 16);
+    if(!m_listenSock.Listen(16))
+        throw "listen failed!";
 
     m_epollfd = epoll_create(1);
     assert(m_epollfd != -1);
 
     epoll_event event;
     event.events = EPOLLIN;
-    event.data.fd = m_listenfd;
-    epoll_ctl(m_epollfd, EPOLL_CTL_ADD, m_listenfd, &event);   
+    event.data.fd = m_listenSock.getSockFd();
+    if(epoll_ctl(m_epollfd, EPOLL_CTL_ADD, m_listenSock.getSockFd(), &event) == -1)
+        std::cout << "add listen event failed" << std::endl;
 }
 
 void WebServer::eventLoop()
@@ -36,20 +32,20 @@ void WebServer::eventLoop()
         for(int i = 0; i < num; ++i)
         {
             //新连接
-            if(m_events[i].data.fd == m_listenfd)
+            if(m_events[i].data.fd == m_listenSock.getSockFd())
             {
-                sockaddr_in clientaddr;
-                socklen_t len = sizeof(clientaddr);
-                int clientfd = accept(m_listenfd, (sockaddr*)&clientaddr, &len);
+                int clientfd = m_listenSock.Accpect();
                 if(clientfd == -1)
                     continue;
-                newConnetion(clientfd, clientaddr);
+                newConnetion(clientfd);
                 continue;
             }
             if(m_events[i].events & EPOLLIN)
             {
-                char buf[1024];
-                int recvbytes = recv(m_events[i].data.fd, buf, 1023, 0);
+                auto it = m_mapConn.find(m_events[i].data.fd);
+                if(it == m_mapConn.end())
+                    ;
+                int recvbytes = it->second.handleInput();
                 if(recvbytes == 0)
                 {
                     std::cout << "conn closed by peer" << std::endl;
@@ -61,10 +57,10 @@ void WebServer::eventLoop()
     }
 }
 
-void WebServer::newConnetion(int sock, const sockaddr_in& addr)
+void WebServer::newConnetion(int sock)
 {
     std::cout << "new connection" << std::endl;
-    HttpConn conn(sock, addr);
+    HttpConn conn(sock);
     m_mapConn.insert({sock, conn});
 
     epoll_event event;
