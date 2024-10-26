@@ -5,6 +5,31 @@
 #include "Sock.h"
 #include "Handler.h"
 
+enum Method{
+    NONE,
+    GET,
+    POST
+};
+
+enum HttpCode{
+    NO_REQ,
+    GET_REQ,
+    BAD_REQ,
+    INTERNAL_ERROR
+};
+
+enum CheckState{
+    CHECK_REQ_LINE,
+    CHECK_HEADERS,
+    CHECK_CONTENT
+};
+
+enum LineCode{
+    LINE_OPEN,
+    LINE_OK,
+    LINE_BAD
+};
+
 class HttpConn: public Handler
 {
     const static int BUF_SIZE = 2048;
@@ -20,6 +45,10 @@ class HttpConn: public Handler
         int handleOutput() override {};
         void handleClose() override {};
 
+    //报文解析
+    public:
+        LineCode getLine();
+        HttpCode parseReqLine();
 
     public:
         static int m_clientCnt;
@@ -30,6 +59,10 @@ class HttpConn: public Handler
 
         char m_inBuf[BUF_SIZE];
         int m_inOff{0};
+
+        int m_lineStart{0};
+        Method m_method{Method::NONE};
+
 };
 
 #endif

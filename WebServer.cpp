@@ -51,7 +51,9 @@ void WebServer::eventLoop()
                     std::cout << "conn closed by peer" << std::endl;
                     m_mapConn.erase(m_events[i].data.fd);
                     close(m_events[i].data.fd);
+                    continue;
                 }
+                it->second.getLine();
             }
         }
     }
