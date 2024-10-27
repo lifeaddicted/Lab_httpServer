@@ -54,6 +54,7 @@ void WebServer::eventLoop()
                     continue;
                 }
                 it->second.getLine();
+                it->second.parseReqLine();
             }
         }
     }

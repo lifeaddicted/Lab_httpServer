@@ -4,6 +4,7 @@
 #include <arpa/inet.h>
 #include "Sock.h"
 #include "Handler.h"
+#include <string>
 
 enum Method{
     NONE,
@@ -48,7 +49,7 @@ class HttpConn: public Handler
     //报文解析
     public:
         LineCode getLine();
-        HttpCode parseReqLine();
+        bool parseReqLine();
 
     public:
         static int m_clientCnt;
@@ -61,8 +62,10 @@ class HttpConn: public Handler
         int m_inOff{0};
 
         int m_lineStart{0};
+        int m_lineChecked{0};
         Method m_method{Method::NONE};
-
+        std::string m_url;
+        std::string m_httpVer;
 };
 
 #endif
