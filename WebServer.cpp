@@ -55,7 +55,19 @@ void WebServer::eventLoop()
                 }
                 it->second.getLine();
                 it->second.parseReqLine();
+                while (true)
+                {
+                    CheckState ret = it->second.parseHeaders();
+                    if(ret == CHECK_CONTENT || ret == CHECK_END)
+                        break;
+                }
+                it->second.parseContent();
+                it->second.sendRsp();
             }
+            // if(m_events[i].events & EPOLLOUT)
+            // {
+            //     std::cout << "write event" << std::endl;
+            // }
         }
     }
 }

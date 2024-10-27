@@ -11,7 +11,7 @@ int HttpConn::handleInput()
     if(bytes == -1)
         return -1;
     
-    std::cout << "recv " << bytes << " bytes: " << m_inBuf + m_inOff;
+    std::cout << "recv " << bytes << " bytes: " << m_inBuf;
     m_inOff += bytes;
     m_inBuf[m_inOff] = 0;
     return bytes;
@@ -69,4 +69,50 @@ bool HttpConn::parseReqLine()
     std::cout << m_method << " " << m_url << " " << m_httpVer << std::endl;
     
     return true;
+}
+
+CheckState HttpConn::parseHeaders()
+{
+    char* sep = strstr(m_inBuf + m_lineStart, "\r\n");  //getline会将\r\n置0；后续需更改
+    int offset = sep - (m_inBuf + m_lineStart) + 2;
+    if(*(sep - 1) == '\0')
+    {
+        m_lineStart += 2;
+        return m_conLen ? CheckState::CHECK_CONTENT : CheckState::CHECK_END;
+    }
+
+    *sep = '\0';
+    *(sep + 1) = '\0';
+    sep = strchr(m_inBuf + m_lineStart, ':');
+    if(sep == nullptr)
+        return CHECK_HEADERS_ERROR;
+    *sep = '\0';
+    if(strcasecmp(m_inBuf + m_lineStart, "Host") == 0)
+    {
+        size_t span = strspn(sep + 1, " \t");
+        m_host = sep + 1 + span;
+        std::cout << "parse Host ok: " << m_host << std::endl;
+    }
+    if(strcasecmp(m_inBuf + m_lineStart, "Content-Length") == 0)
+    {
+        size_t span = strspn(sep + 1, " \t");
+        m_conLen = atoi(sep + span + 1);
+        std::cout << "parse Content-Length ok: " << m_conLen << std::endl;
+    }
+    m_lineStart += offset;
+    return CHECK_HEADERS;
+}
+
+CheckState HttpConn::parseContent()
+{
+    m_content = {m_inBuf + m_lineStart, m_conLen};
+    std::cout << "parse Content ok: " << m_content << std::endl;
+    return CHECK_CONTENT;
+}
+
+void HttpConn::sendRsp()
+{
+    std::string rsp;
+    rsp += "HTTP/1.1 200 OK\r\nContent-Length: 11\r\n\r\nhello world";
+    m_sock.Send(rsp.c_str(), rsp.size());
 }
