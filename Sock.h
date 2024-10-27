@@ -23,6 +23,7 @@ class Sock
     //IO
     public:
         int Recv(char buf[], int len);
+        int Send(const char buf[], int len);
 
     //opt
     public:

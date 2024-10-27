@@ -4,6 +4,7 @@
 #include <arpa/inet.h>
 #include "Sock.h"
 #include "Handler.h"
+#include <string>
 
 enum Method{
     NONE,
@@ -21,7 +22,9 @@ enum HttpCode{
 enum CheckState{
     CHECK_REQ_LINE,
     CHECK_HEADERS,
-    CHECK_CONTENT
+    CHECK_HEADERS_ERROR,
+    CHECK_CONTENT,
+    CHECK_END
 };
 
 enum LineCode{
@@ -49,6 +52,10 @@ class HttpConn: public Handler
     public:
         LineCode getLine();
         HttpCode parseReqLine();
+        CheckState parseHeaders();
+        CheckState parseContent();
+
+        void sendRsp();
 
     public:
         static int m_clientCnt;
@@ -61,8 +68,12 @@ class HttpConn: public Handler
         int m_inOff{0};
 
         int m_lineStart{0};
+        int m_lineChecked{0};
         Method m_method{Method::NONE};
 
+        std::string m_host;
+        int m_conLen{0};
+        std::string m_content;
 };
 
 #endif

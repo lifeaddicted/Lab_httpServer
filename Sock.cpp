@@ -45,6 +45,12 @@ int Sock::Recv(char buf[], int len)
     return ret;
 }
 
+int Sock::Send(const char buf[], int len)
+{
+    int ret = send(m_sockfd, buf, len, 0);
+    return ret;
+}
+
 bool Sock::setNonblock()
 {
     int old = fcntl(m_sockfd, F_GETFL);
