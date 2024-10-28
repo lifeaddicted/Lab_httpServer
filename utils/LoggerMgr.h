@@ -5,15 +5,18 @@
 
 class LoggerMgr {
     public:
-        void init();
+        static void init()
+        {
+            el::Loggers::getLogger("network");
+        }
 };
 
-void LoggerMgr::init()
-{
-    el::Loggers::getLogger("network");
-}
+// void LoggerMgr::init()
+// {
+//     el::Loggers::getLogger("network");
+// }
 
 
-#define NW_DBG(__VA__ARGS__...) CLOG(DEBUG, __VA__ARGS__)
+#define NW_DBG() CLOG(DEBUG, "network")
 
 #endif

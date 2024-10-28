@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include "http_conn.h"
 #include "Sock.h"
+#include "LoggerMgr.h"
 
 class WebServer{
     public:
