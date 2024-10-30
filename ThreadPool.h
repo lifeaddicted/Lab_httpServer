@@ -11,7 +11,7 @@ class ThreadPool
         ThreadPool(int num);
         ~ThreadPool();
 
-        void append(T);
+        bool append(T);
 
     protected:
         static void* worker(void* arg);
@@ -21,6 +21,7 @@ class ThreadPool
         int m_threadNum;
         pthread_t* m_idVec;
 
+        int m_maxJob{10000};
         std::list<T> m_jobQue;
         Mutex m_queMtx;
         Semaphore m_queSem;
@@ -74,6 +75,22 @@ void ThreadPool<T>::run()
         //proactor
         job->process();
     }
+}
+
+template<typename T>
+bool ThreadPool<T>::append(T job)
+{
+    m_queMtx.Lock();
+    if(m_jobQue.size() >= m_maxJob)
+    {
+        m_queMtx.Unlock();
+        //Log
+        return false;
+    }
+    m_jobQue.emplace_back(job);
+    m_queMtx.Unlock();
+    m_queSem.Post();
+    return true;
 }
 
 #endif

@@ -58,6 +58,7 @@ void WebServer::eventLoop()
                     close(m_events[i].data.fd);
                     continue;
                 }
+                m_threadPool->append(it->second);
                 it->second->getLine();
                 it->second->parseReqLine();
                 while (true)
