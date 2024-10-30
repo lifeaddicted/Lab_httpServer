@@ -5,6 +5,8 @@
 #include "Sock.h"
 #include "Handler.h"
 #include <string>
+#include <sys/uio.h>
+#include <sys/stat.h>
 
 enum Method{
     NONE,
@@ -76,6 +78,11 @@ class HttpConn: public Handler
         std::string m_host;
         int m_conLen{0};
         std::string m_content;
+
+        std::string m_rscPath;
+        struct stat m_fileStat;
+        char m_rspHead[BUF_SIZE];
+        struct iovec m_outbuf[2];
 };
 
 #endif

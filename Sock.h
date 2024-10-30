@@ -3,6 +3,7 @@
 
 #include <string>
 #include <arpa/inet.h>
+#include <sys/uio.h>
 
 /**
  * @brief SOCK_STREAM
@@ -24,6 +25,7 @@ class Sock
     public:
         int Recv(char buf[], int len);
         int Send(const char buf[], int len);
+        int Send(const struct iovec*, int num);
 
     //opt
     public:

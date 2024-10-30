@@ -2,8 +2,11 @@
 #include <unistd.h>
 #include <iostream>
 #include <cstring>
+#include <fcntl.h>
+#include <sys/mman.h>
 
 int HttpConn::m_clientCnt = 0;
+const char* RscRoot = "../root";
 
 int HttpConn::handleInput()
 {
@@ -112,7 +115,28 @@ CheckState HttpConn::parseContent()
 
 void HttpConn::sendRsp()
 {
-    std::string rsp;
-    rsp += "HTTP/1.1 200 OK\r\nContent-Length: 11\r\n\r\nhello world";
-    m_sock.Send(rsp.c_str(), rsp.size());
+    m_rscPath += RscRoot;
+    m_rscPath += "/judge.html";
+    int fd = open(m_rscPath.c_str(), O_RDONLY);
+    if(fd == -1)
+        perror("open");
+
+    if(stat(m_rscPath.c_str(), &m_fileStat) == -1)
+        perror("stat");
+
+    std::string rsp("HTTP/1.1 200 OK\r\nContent-Length: ");//11\r\n\r\n");
+    rsp += m_fileStat.st_size;
+    rsp += "\r\n\r\n";
+    memcpy(m_rspHead, rsp.c_str(), rsp.size());
+    m_outbuf[0].iov_base = m_rspHead;
+    m_outbuf[0].iov_len = rsp.size();
+
+
+    void* map = mmap(NULL, m_fileStat.st_size, PROT_READ, MAP_SHARED, fd, 0);
+    if(map == MAP_FAILED)
+        perror("mmap");
+    close(fd);
+    m_outbuf[1].iov_base = map;
+    m_outbuf[1].iov_len = m_fileStat.st_size;
+    m_sock.Send(m_outbuf, 2);
 }

@@ -51,6 +51,12 @@ int Sock::Send(const char buf[], int len)
     return ret;
 }
 
+int Sock::Send(const struct iovec* vec, int num)
+{
+    int ret = writev(m_sockfd, vec, num);
+    return ret;
+}
+
 bool Sock::setNonblock()
 {
     int old = fcntl(m_sockfd, F_GETFL);

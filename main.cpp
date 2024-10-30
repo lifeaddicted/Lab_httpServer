@@ -9,7 +9,7 @@ int main()
     //启动监听
     server.eventListen();
     LoggerMgr::init();
-    NW_DBG() << "listening...";
+    NW_DBG() << "listening..." << 80;
 
     //事件循环
     server.eventLoop();
