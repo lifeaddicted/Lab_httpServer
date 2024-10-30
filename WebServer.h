@@ -8,13 +8,17 @@
 #include "http_conn.h"
 #include "Sock.h"
 #include "LoggerMgr.h"
+#include "ThreadPool.h"
 
 class WebServer{
     public:
         WebServer(): m_listenSock() {}
+        ~WebServer();
 
         void eventListen();
         void eventLoop();
+
+        void initThreadPool(int num);
 
         inline void newConnetion(int sock);
 
@@ -26,7 +30,9 @@ class WebServer{
         int m_epollfd{-1};
         epoll_event m_events[MAX_EVENT_NUM];
 
-        std::map<int, HttpConn> m_mapConn;
+        std::map<int, ConnPtr> m_mapConn;
+
+        ThreadPool<ConnPtr>* m_threadPool;
 };
 
 #endif

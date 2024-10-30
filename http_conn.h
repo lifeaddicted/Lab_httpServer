@@ -7,6 +7,7 @@
 #include <string>
 #include <sys/uio.h>
 #include <sys/stat.h>
+#include <memory>
 
 enum Method{
     NONE,
@@ -57,7 +58,11 @@ class HttpConn: public Handler
         CheckState parseHeaders();
         CheckState parseContent();
 
+        void doRequset();
+
         void sendRsp();
+
+        void process(){}
 
     public:
         static int m_clientCnt;
@@ -84,5 +89,7 @@ class HttpConn: public Handler
         char m_rspHead[BUF_SIZE];
         struct iovec m_outbuf[2];
 };
+
+typedef std::shared_ptr<HttpConn> ConnPtr;
 
 #endif

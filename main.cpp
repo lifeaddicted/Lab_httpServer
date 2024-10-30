@@ -11,6 +11,8 @@ int main()
     LoggerMgr::init();
     NW_DBG() << "listening..." << 80;
 
+    server.initThreadPool(4);
+
     //事件循环
     server.eventLoop();
 

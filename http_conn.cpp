@@ -6,7 +6,7 @@
 #include <sys/mman.h>
 
 int HttpConn::m_clientCnt = 0;
-const char* RscRoot = "../root";
+const char* RscRoot = "../root/";
 
 int HttpConn::handleInput()
 {
@@ -113,10 +113,38 @@ CheckState HttpConn::parseContent()
     return CHECK_CONTENT;
 }
 
+void HttpConn::doRequset()
+{
+    //注册
+    if(m_url[1] == '0')
+    {
+        m_rscPath += RscRoot;
+        m_rscPath += "register.html";
+    }
+    if(m_url[1] == '1')
+    {
+        m_rscPath += RscRoot;
+        m_rscPath += "log.html";
+    }
+    // if(m_url[1] == '0')
+    // {
+    //     m_rscPath += RscRoot;
+    //     m_rscPath += "register.html";
+    // }
+    // if(m_url[1] == '0')
+    // {
+    //     m_rscPath += RscRoot;
+    //     m_rscPath += "register.html";
+    // }
+    else
+    {
+        m_rscPath += RscRoot;
+        m_rscPath += "judge.html";
+    }
+}
+
 void HttpConn::sendRsp()
 {
-    m_rscPath += RscRoot;
-    m_rscPath += "/judge.html";
     int fd = open(m_rscPath.c_str(), O_RDONLY);
     if(fd == -1)
         perror("open");

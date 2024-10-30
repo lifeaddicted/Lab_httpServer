@@ -5,6 +5,11 @@
 #include <iostream>
 #include <unistd.h>
 
+WebServer::~WebServer()
+{
+    delete m_threadPool;
+}
+
 void WebServer::eventListen()
 {
     if(!m_listenSock.Bind(8080))
@@ -45,7 +50,7 @@ void WebServer::eventLoop()
                 auto it = m_mapConn.find(m_events[i].data.fd);
                 if(it == m_mapConn.end())
                     ;
-                int recvbytes = it->second.handleInput();
+                int recvbytes = it->second->handleInput();
                 if(recvbytes == 0)
                 {
                     std::cout << "conn closed by peer" << std::endl;
@@ -53,16 +58,17 @@ void WebServer::eventLoop()
                     close(m_events[i].data.fd);
                     continue;
                 }
-                it->second.getLine();
-                it->second.parseReqLine();
+                it->second->getLine();
+                it->second->parseReqLine();
                 while (true)
                 {
-                    CheckState ret = it->second.parseHeaders();
+                    CheckState ret = it->second->parseHeaders();
                     if(ret == CHECK_CONTENT || ret == CHECK_END)
                         break;
                 }
-                it->second.parseContent();
-                it->second.sendRsp();
+                it->second->parseContent();
+                it->second->doRequset();
+                it->second->sendRsp();
             }
             // if(m_events[i].events & EPOLLOUT)
             // {
@@ -72,11 +78,15 @@ void WebServer::eventLoop()
     }
 }
 
+void WebServer::initThreadPool(int num)
+{
+    m_threadPool = new ThreadPool<ConnPtr>(num);
+}
+
 void WebServer::newConnetion(int sock)
 {
     std::cout << "new connection" << std::endl;
-    HttpConn conn(sock);
-    m_mapConn.insert({sock, conn});
+    m_mapConn.insert({sock, std::make_shared<HttpConn>(sock)});
 
     epoll_event event;
     event.data.fd = sock;
