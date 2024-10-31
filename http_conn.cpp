@@ -4,6 +4,7 @@
 #include <cstring>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <sys/epoll.h>
 
 int HttpConn::m_clientCnt = 0;
 const char* RscRoot = "../root/";
@@ -18,6 +19,68 @@ int HttpConn::handleInput()
     m_inOff += bytes;
     m_inBuf[m_inOff] = 0;
     return bytes;
+}
+
+int HttpConn::handleOutput()
+{
+    while(m_bytesToSend)
+    {
+        int num = m_sock.Send(m_outbuf, 2);
+        if(num == -1 && errno == EAGAIN)
+        {
+            epoll_event event;
+            event.data.fd = m_sock.getSockFd();
+            event.events = EPOLLOUT | EPOLLONESHOT;
+            epoll_ctl(m_epollfd, EPOLL_CTL_MOD, event.data.fd, &event);
+            break;
+        }
+        
+        m_bytesToSend -= num;
+        if (m_outbuf[0].iov_len)
+        {
+            if(m_outbuf[0].iov_len > num)
+            {
+                m_outbuf[0].iov_base += num;
+                m_outbuf[0].iov_len -= num;
+                num = 0;
+            }
+            else
+            {
+                num -= m_outbuf[0].iov_len;
+                m_outbuf[0].iov_len = 0;
+            }
+        }
+        if (m_outbuf[1].iov_len)
+        {
+            if(m_outbuf[1].iov_len > num)
+            {
+                m_outbuf[1].iov_base += num;
+                m_outbuf[1].iov_len -= num;
+                num = 0;
+            }
+            else
+            {
+                num -= m_outbuf[1].iov_len;
+                m_outbuf[1].iov_len = 0;
+            }
+        }
+    }
+
+    if(m_bytesToSend)
+    {
+        epoll_event event;
+        event.data.fd = m_sock.getSockFd();
+        event.events = EPOLLOUT | EPOLLONESHOT;
+        epoll_ctl(m_epollfd, EPOLL_CTL_MOD, event.data.fd, &event);
+    }
+    else
+    {
+        epoll_event event;
+        event.data.fd = m_sock.getSockFd();
+        event.events = EPOLLIN;
+        epoll_ctl(m_epollfd, EPOLL_CTL_MOD, event.data.fd, &event);
+    }
+    return m_bytesToSend;
 }
 
 LineCode HttpConn::getLine()
@@ -141,7 +204,7 @@ void HttpConn::doRequset()
     }
 }
 
-void HttpConn::sendRsp()
+void HttpConn::processWrite()
 {
     int fd = open(m_rscPath.c_str(), O_RDONLY);
     if(fd == -1)
@@ -164,7 +227,13 @@ void HttpConn::sendRsp()
     close(fd);
     m_outbuf[1].iov_base = map;
     m_outbuf[1].iov_len = m_fileStat.st_size;
-    m_sock.Send(m_outbuf, 2);
+
+    m_bytesToSend = m_outbuf[0].iov_len + m_outbuf[1].iov_len;
+
+    epoll_event event;
+    event.data.fd = m_sock.getSockFd();
+    event.events = EPOLLOUT | EPOLLONESHOT;
+    epoll_ctl(m_epollfd, EPOLL_CTL_MOD, event.data.fd, &event);
 }
 
 void HttpConn::process()
@@ -174,7 +243,7 @@ void HttpConn::process()
         return;
     doRequset();
     resetInBuf();
-    sendRsp();
+    processWrite();
 }
 
 HttpCode HttpConn::processRead()

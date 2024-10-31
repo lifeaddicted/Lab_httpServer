@@ -60,10 +60,13 @@ void WebServer::eventLoop()
                 }
                 m_threadPool->append(it->second);
             }
-            // if(m_events[i].events & EPOLLOUT)
-            // {
-            //     std::cout << "write event" << std::endl;
-            // }
+            if(m_events[i].events & EPOLLOUT)
+            {
+                auto it = m_mapConn.find(m_events[i].data.fd);
+                if(it == m_mapConn.end())
+                    ;
+                int sendbytes = it->second->handleOutput();
+            }
         }
     }
 }
@@ -76,11 +79,14 @@ void WebServer::initThreadPool(int num)
 void WebServer::newConnetion(int sock)
 {
     std::cout << "new connection" << std::endl;
-    m_mapConn.insert({sock, std::make_shared<HttpConn>(sock)});
+    ConnPtr conn = std::make_shared<HttpConn>(sock, m_epollfd);
+    if(!conn->makeUnblock())
+        NW_DBG() << "make unblock failed!";
+    m_mapConn.insert({sock, conn});
 
     epoll_event event;
     event.data.fd = sock;
-    event.events = EPOLLIN | EPOLLOUT;
+    event.events = EPOLLIN /*| EPOLLOUT*/;
     int ret = epoll_ctl(m_epollfd, EPOLL_CTL_ADD, sock, &event);
     std::cout << "add ret: " << ret << std::endl;
 }

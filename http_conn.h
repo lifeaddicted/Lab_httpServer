@@ -41,15 +41,17 @@ class HttpConn: public Handler
     const static int BUF_SIZE = 2048;
 
     public:
-        HttpConn(int sock): m_sock(sock) {}
+        HttpConn(int sock, int epollfd): m_sock(sock), m_epollfd(epollfd) {}
 
         void Close() { m_sock.Close(); }
 
     //IO处理
     public:
         int handleInput() override;
-        int handleOutput() override {};
+        int handleOutput() override;
         void handleClose() override {};
+
+        bool makeUnblock() { return m_sock.setNonblock(); }
 
     //报文解析
     public:
@@ -59,8 +61,6 @@ class HttpConn: public Handler
         CheckState parseContent();
 
         void doRequset();
-
-        void sendRsp();
 
         void process();
         HttpCode processRead();
@@ -74,6 +74,7 @@ class HttpConn: public Handler
     
     private:
         Sock m_sock;
+        int m_epollfd;
 
         char m_inBuf[BUF_SIZE];
         int m_inOff{0};
@@ -91,6 +92,8 @@ class HttpConn: public Handler
 
         std::string m_rscPath;
         struct stat m_fileStat;
+
+        int m_bytesToSend{0};
         char m_rspHead[BUF_SIZE];
         struct iovec m_outbuf[2];
 };
