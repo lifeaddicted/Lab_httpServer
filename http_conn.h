@@ -67,6 +67,7 @@ class HttpConn: public Handler
         void processWrite();
 
         void resetInBuf();
+        void resetOutBuf();
 
     public:
         static int m_clientCnt;

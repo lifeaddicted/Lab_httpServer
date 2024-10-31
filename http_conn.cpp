@@ -48,6 +48,7 @@ int HttpConn::handleOutput()
             {
                 num -= m_outbuf[0].iov_len;
                 m_outbuf[0].iov_len = 0;
+                m_outbuf[0].iov_base = nullptr;
             }
         }
         if (m_outbuf[1].iov_len)
@@ -62,6 +63,7 @@ int HttpConn::handleOutput()
             {
                 num -= m_outbuf[1].iov_len;
                 m_outbuf[1].iov_len = 0;
+                m_outbuf[1].iov_base = nullptr;
             }
         }
     }
@@ -75,6 +77,7 @@ int HttpConn::handleOutput()
     }
     else
     {
+        resetOutBuf();
         epoll_event event;
         event.data.fd = m_sock.getSockFd();
         event.events = EPOLLIN;
@@ -182,7 +185,7 @@ void HttpConn::doRequset()
         m_rscPath += RscRoot;
         m_rscPath += "register.html";
     }
-    if(m_url[1] == '1')
+    else if(m_url[1] == '1')
     {
         m_rscPath += RscRoot;
         m_rscPath += "log.html";
@@ -248,8 +251,8 @@ void HttpConn::process()
 
 HttpCode HttpConn::processRead()
 {
-    while( (m_conLen > 0)
-            || (getLine() == LINE_OK) )
+    while( (getLine() == LINE_OK) 
+            || (m_conLen > 0))
     {
         switch (m_checkState)
         {
@@ -262,15 +265,16 @@ HttpCode HttpConn::processRead()
             case CHECK_CONTENT:
                 m_checkState = parseContent();
                 break;
+            //POST请求
+            case CHECK_END:
+                return GET_REQ;
+            case CHECK_ERROR:
+                return BAD_REQ;
         }
     }
     
-    if (m_checkState == CHECK_ERROR)
-        return BAD_REQ;
-    if (m_checkState == CHECK_END)
-        return GET_REQ;
-    
-    return NO_REQ;
+    //GET请求
+    return GET_REQ;
 }
 
 void HttpConn::resetInBuf()
@@ -284,4 +288,13 @@ void HttpConn::resetInBuf()
     m_host.clear();
     m_conLen = 0;
     m_content.clear();
+}
+
+void HttpConn::resetOutBuf()
+{
+    m_rscPath.clear();
+    memset(&m_fileStat, 0, sizeof(struct stat));
+    memset(m_rspHead, 0, BUF_SIZE);
+    memset(m_outbuf, 0, sizeof(struct iovec));
+    memset(m_outbuf + 1, 0, sizeof(struct iovec));
 }
