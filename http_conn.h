@@ -25,8 +25,8 @@ enum HttpCode{
 enum CheckState{
     CHECK_REQ_LINE,
     CHECK_HEADERS,
-    CHECK_HEADERS_ERROR,
     CHECK_CONTENT,
+    CHECK_ERROR,
     CHECK_END
 };
 
@@ -54,7 +54,7 @@ class HttpConn: public Handler
     //报文解析
     public:
         LineCode getLine();
-        bool parseReqLine();
+        CheckState parseReqLine();
         CheckState parseHeaders();
         CheckState parseContent();
 
@@ -62,7 +62,11 @@ class HttpConn: public Handler
 
         void sendRsp();
 
-        void process(){}
+        void process();
+        HttpCode processRead();
+        void processWrite();
+
+        void resetInBuf();
 
     public:
         static int m_clientCnt;
@@ -76,6 +80,7 @@ class HttpConn: public Handler
 
         int m_lineStart{0};
         int m_lineChecked{0};
+        CheckState m_checkState{CHECK_REQ_LINE};
         Method m_method{Method::NONE};
         std::string m_url;
         std::string m_httpVer;

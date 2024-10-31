@@ -27,7 +27,7 @@ LineCode HttpConn::getLine()
         return LineCode::LINE_OPEN;
 
     std::cout << "get line ok!" << std::endl;
-    m_lineChecked += (ret - m_inBuf);
+    m_lineChecked += (ret - m_inBuf - m_lineStart);
 
     m_inBuf[m_lineChecked - 1] = (m_inBuf[m_lineChecked - 1] == '\r') ? '\0'
                                  : m_inBuf[m_lineChecked - 1];
@@ -35,12 +35,12 @@ LineCode HttpConn::getLine()
     return LineCode::LINE_OK;
 }
 
-bool HttpConn::parseReqLine()
+CheckState HttpConn::parseReqLine()
 {
     //Method
     char* sep = strchr(m_inBuf + m_lineStart, ' ');
     if(sep == nullptr)
-        return false;
+        return CHECK_ERROR;
     
     *sep = '\0';
     if(strcasecmp(m_inBuf + m_lineStart, "GET") == 0)
@@ -51,14 +51,14 @@ bool HttpConn::parseReqLine()
     if(m_method == Method::NONE)
     {
         std::cout << "bad req: " << m_inBuf + m_lineStart << std::endl;
-        return false;
+        return CHECK_ERROR;
     }
     m_lineStart += sep - (m_inBuf + m_lineStart) + 1;
 
     //Url
     sep = strchr(m_inBuf + m_lineStart, ' ');
     if(sep == nullptr)
-        return false;
+        return CHECK_ERROR;
 
     *sep = '\0';
     m_url = m_inBuf + m_lineStart;
@@ -71,24 +71,22 @@ bool HttpConn::parseReqLine()
     std::cout << "parse reqLine ok!" << std::endl;
     std::cout << m_method << " " << m_url << " " << m_httpVer << std::endl;
     
-    return true;
+    return CHECK_HEADERS;
 }
 
 CheckState HttpConn::parseHeaders()
 {
-    char* sep = strstr(m_inBuf + m_lineStart, "\r\n");  //getline会将\r\n置0；后续需更改
-    int offset = sep - (m_inBuf + m_lineStart) + 2;
-    if(*(sep - 1) == '\0')
+    // char* sep = strstr(m_inBuf + m_lineStart, "\r\n");  //getline会将\r\n置0；后续需更改
+    // int offset = sep - (m_inBuf + m_lineStart) + 2;
+    if( m_inBuf[m_lineChecked - 3] == '\0')
     {
         m_lineStart += 2;
         return m_conLen ? CheckState::CHECK_CONTENT : CheckState::CHECK_END;
     }
 
-    *sep = '\0';
-    *(sep + 1) = '\0';
-    sep = strchr(m_inBuf + m_lineStart, ':');
+    char* sep = strchr(m_inBuf + m_lineStart, ':');
     if(sep == nullptr)
-        return CHECK_HEADERS_ERROR;
+        return CHECK_ERROR;
     *sep = '\0';
     if(strcasecmp(m_inBuf + m_lineStart, "Host") == 0)
     {
@@ -102,7 +100,7 @@ CheckState HttpConn::parseHeaders()
         m_conLen = atoi(sep + span + 1);
         std::cout << "parse Content-Length ok: " << m_conLen << std::endl;
     }
-    m_lineStart += offset;
+    m_lineStart = m_lineChecked;
     return CHECK_HEADERS;
 }
 
@@ -110,7 +108,7 @@ CheckState HttpConn::parseContent()
 {
     m_content = {m_inBuf + m_lineStart, m_conLen};
     std::cout << "parse Content ok: " << m_content << std::endl;
-    return CHECK_CONTENT;
+    return CHECK_END;
 }
 
 void HttpConn::doRequset()
@@ -167,4 +165,54 @@ void HttpConn::sendRsp()
     m_outbuf[1].iov_base = map;
     m_outbuf[1].iov_len = m_fileStat.st_size;
     m_sock.Send(m_outbuf, 2);
+}
+
+void HttpConn::process()
+{
+    HttpCode ret = processRead();
+    if(ret == NO_REQ)
+        return;
+    doRequset();
+    resetInBuf();
+    sendRsp();
+}
+
+HttpCode HttpConn::processRead()
+{
+    while( (m_conLen > 0)
+            || (getLine() == LINE_OK) )
+    {
+        switch (m_checkState)
+        {
+            case CHECK_REQ_LINE:
+                m_checkState = parseReqLine();
+                break;
+            case CHECK_HEADERS:
+                m_checkState = parseHeaders();
+                break;
+            case CHECK_CONTENT:
+                m_checkState = parseContent();
+                break;
+        }
+    }
+    
+    if (m_checkState == CHECK_ERROR)
+        return BAD_REQ;
+    if (m_checkState == CHECK_END)
+        return GET_REQ;
+    
+    return NO_REQ;
+}
+
+void HttpConn::resetInBuf()
+{
+    m_checkState = CHECK_REQ_LINE;
+    m_lineStart = 0;
+    m_lineChecked = 0;
+    m_method = Method::NONE;
+    m_url.clear();
+    m_httpVer.clear();
+    m_host.clear();
+    m_conLen = 0;
+    m_content.clear();
 }

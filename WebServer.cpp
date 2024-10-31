@@ -59,17 +59,6 @@ void WebServer::eventLoop()
                     continue;
                 }
                 m_threadPool->append(it->second);
-                it->second->getLine();
-                it->second->parseReqLine();
-                while (true)
-                {
-                    CheckState ret = it->second->parseHeaders();
-                    if(ret == CHECK_CONTENT || ret == CHECK_END)
-                        break;
-                }
-                it->second->parseContent();
-                it->second->doRequset();
-                it->second->sendRsp();
             }
             // if(m_events[i].events & EPOLLOUT)
             // {
