@@ -31,6 +31,12 @@ Semaphore::~Semaphore()
     sem_destroy(&m_sem);
 }
 
+void Semaphore::reInit(int val)
+{
+    sem_destroy(&m_sem);
+    sem_init(&m_sem, 0, val);
+}
+
 void Semaphore::Post()
 {
     sem_post(&m_sem);

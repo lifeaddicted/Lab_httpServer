@@ -23,6 +23,7 @@ class Semaphore
         Semaphore(int val = 0);
         ~Semaphore();
 
+        void reInit(int val);
         void Post();
         void Wait();
 
