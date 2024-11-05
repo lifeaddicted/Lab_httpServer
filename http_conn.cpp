@@ -5,7 +5,10 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/epoll.h>
+#include <map>
+#include "DBConnPool.h"
 
+std::map<std::string, std::string> users;
 int HttpConn::m_clientCnt = 0;
 const char* RscRoot = "../root/";
 
@@ -179,7 +182,55 @@ CheckState HttpConn::parseContent()
 
 void HttpConn::doRequset()
 {
-    //注册
+    if(m_method == POST && (m_url[1] == '3' || m_url[1] == '2')) {
+        std::string usr;
+        std::string passwd;
+        size_t pos = m_content.find('&');
+        usr = m_content.substr(0, pos);
+        passwd = m_content.substr(pos + 1);
+
+        usr = usr.substr(usr.find('=') + 1);
+        passwd = passwd.substr(passwd.find('=') + 1);
+
+        //注册
+        if(m_url[1] == '3') {
+            std::string sql;
+            sql += "insert into types values('";
+            sql += usr + "', '" + passwd + "')";
+
+            if(users.find(usr) == users.end()) {
+                DBConn conn;
+                int res = mysql_query(conn.getConn(), sql.c_str());
+                if(res) {
+                    std::cout << mysql_error(conn.getConn()) << std::endl;
+                    m_rscPath += RscRoot;
+                    m_rscPath += "registerError.html";
+                }
+                else {
+                    m_rscPath += RscRoot;
+                    m_rscPath += "log.html";
+                }
+                users.insert({usr, passwd});
+            }
+            else {
+                m_rscPath += RscRoot;
+                m_rscPath += "registerError.html";
+            }
+        }
+        //登录
+        else if (m_url[1] == '2') {
+            if(users.find(usr) != users.end() && users[usr] == passwd) {
+                m_rscPath += RscRoot;
+                m_rscPath += "welcome.html";
+            }
+            else {
+                m_rscPath += RscRoot;
+                m_rscPath += "logError.html";
+            }
+        }
+        return;
+    }
+
     if(m_url[1] == '0')
     {
         m_rscPath += RscRoot;
@@ -190,16 +241,21 @@ void HttpConn::doRequset()
         m_rscPath += RscRoot;
         m_rscPath += "log.html";
     }
-    // if(m_url[1] == '0')
-    // {
-    //     m_rscPath += RscRoot;
-    //     m_rscPath += "register.html";
-    // }
-    // if(m_url[1] == '0')
-    // {
-    //     m_rscPath += RscRoot;
-    //     m_rscPath += "register.html";
-    // }
+    else if(m_url[1] == '5')
+    {
+        m_rscPath += RscRoot;
+        m_rscPath += "picture.html";
+    }
+    else if(m_url[1] == '6')
+    {
+        m_rscPath += RscRoot;
+        m_rscPath += "video.html";
+    }
+    else if(m_url[1] == '7')
+    {
+        m_rscPath += RscRoot;
+        m_rscPath += "fans.html";
+    }
     else
     {
         m_rscPath += RscRoot;
